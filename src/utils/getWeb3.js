@@ -1,4 +1,5 @@
 import Web3 from 'web3'
+import getTransactionReceiptMined from './getTransactionReceiptMined';
 
 let getWeb3 = new Promise(function(resolve, reject) {
   // Wait for loading completion to avoid race conditions with web3 injection timing.
@@ -10,6 +11,7 @@ let getWeb3 = new Promise(function(resolve, reject) {
     if (typeof web3 !== 'undefined') {
       // Use Mist/MetaMask's provider.
       web3 = new Web3(web3.currentProvider)
+      web3.eth.getTransactionReceiptMined = getTransactionReceiptMined;
 
       results = {
         web3: web3

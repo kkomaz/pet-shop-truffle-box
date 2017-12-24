@@ -14,11 +14,15 @@ class App extends Component {
     super(props)
 
     this.state = {
-      web3: null,
+      web3: {},
       adoptionContract: null,
       pets: [],
       adopters: [],
+      blockNumber: null,
     }
+
+    this.adoptPet = this.adoptPet.bind(this);
+    this.getBlockNumber = this.getBlockNumber.bind(this);
   }
 
   componentWillMount() {
@@ -26,13 +30,21 @@ class App extends Component {
     .then(results => {
       this.setState({
         web3: results.web3
-      })
-      this.fetchPets();
-      this.instantiateContract()
+      }, () => {
+        this.getBlockNumber()
+        this.instantiateContract()
+        this.fetchPets();
+      });
     })
     .catch(() => {
       console.log('Error finding web3.')
     })
+  }
+
+  getBlockNumber() {
+    this.state.web3.eth.getBlockNumber((error, block) => {
+      this.setState({ blockNumber: block });
+    });
   }
 
   fetchPets() {
@@ -41,13 +53,20 @@ class App extends Component {
 
   adoptPet(item) {
     const { adoptionContract } = this.state;
+    const newAdopters = this.state.adopters;
 
     this.state.web3.eth.getAccounts((error, accounts) => {
       adoptionContract.deployed().then((instance) => {
         return instance.adopt(item, { from: accounts[0]})
           .then((result) => {
-            console.log(result)
-            this.setState({ adopted: true });
+            this.state.web3.eth.getTransactionReceiptMined(result.tx)
+              .then((newResult) => {
+                newAdopters[item] = accounts[0];
+                this.setState({
+                  blockNumber: newResult.blockNumber,
+                  adopters: newAdopters
+                })
+              });
           })
           .catch((err) => {
             console.log(err.message);
@@ -63,7 +82,10 @@ class App extends Component {
 
     adoption.deployed().then((instance) => {
       return instance.getAdopters.call().then((result) => {
-        this.setState({ adopters: result, adoptionContract: adoption });
+        this.setState({
+          adopters: result,
+          adoptionContract: adoption
+        });
       });
     });
   }
